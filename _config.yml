@@ -1,0 +1,12 @@
+# Site settings
+title: (replicate thoughts)
+email: whilo@topiq.es
+description: > # this means to ignore newlines until "baseurl:"
+  Blog posts about Clojure, Machine Learning and critical theory.
+baseurl: "" # the subpath of your site, e.g. /blog/
+url: "http://whilo.github.io" # the base hostname & protocol for your site
+twitter_username: wh1lo
+github_username:  whilo
+
+# Build settings
+markdown: kramdown
