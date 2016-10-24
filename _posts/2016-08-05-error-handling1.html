@@ -17,14 +17,17 @@ categories: org
     propagate. But is this assurance good enough? I have found that once your
     state becomes more and more linked to external systems, code covering these
     systems also tends to spread.
-
+</p>
+<p>
     But Clojure has nice concepts of how to deal with errors beyond `try-catch`
     mechanisms with exceptions. There are <a href="https://github.com/scgilardi/slingshot">libraries providing the Common Lisp condition system for Clojure</a> and
     as <a href="https://www.youtube.com/watch?v=zp0OEDcAro0">Chris Houser has pointed out</a>,
     even a simple dynamic scoping will do. This approach has many benefits,
     importantly it can allow robustness (restarts), which are not possible when
     an exception has unwound the stack.
+</p>
 
+<p>
     So does this cut it? I have faced a more profound problem with Clojure error
     handling in `core.async`. But this only lead me to investigate the design
     space a bit, most prominently the <a href="http://erlang.org/download/armstrong_thesis_2003.pdf"> Erlang *Let it crash* principle</a>.
@@ -35,7 +38,9 @@ categories: org
     reliability despite lacking a type system</a>. Clojure with CSP (core.async) is
     very similar in this regard, but by default it lacks the same quality error
     handling.
+</p>
 
+<p>
     Erlang uses monitors to track different processes (actors) and automatically
     and preemptively terminates processes monitoring other processes if they
     die. This importantly allows to easily restart whole subsystems if something
@@ -51,7 +56,8 @@ categories: org
     only allows easier mutable adaption of a running system. Note that this
     system can also be reloaded by invoking the error mechanism without having a
     mutable addressing scheme for processes.
-
+</p>
+<p>
 
 
     We can hence summarize the requirements for robust error handling by two
@@ -60,6 +66,8 @@ categories: org
         <li><i>All</i> errors must be catched and dealt with somewhere</li>
         <li>Resources must be <i>properly freed</i> for subsystems to restart</li>
     </ol>
+</p>
+<p>
 
     So how does this relate to Clojure? core.async uses the concept of
     go-routines, which are not the same as Erlang processes as they lack the
@@ -69,8 +77,10 @@ categories: org
     routines which are called. core.async hence also does not have the
     send/receive mechanism of Erlang. This is not critical though, as we can
     recover the error handling requirements above without them.
+</p>
 
 
+<p>
     Coming back to error handling in core.async, it does not provide any error
     handling by default and throwing exceptions <a href="https://wyegelwel.github.io/Error-Handling-with-Clojure-Async/">is broken</a>.
     While it is easy to fix by installing a default handler, it does not recover
@@ -83,8 +93,9 @@ categories: org
     the subsystem affected by it. This requires bidirectional communication, as
     we need to signal our restart intent. Importantly it is hence not enough to
     put exceptions on an error channel with go-try macro construct.
+</p>
 
-
+<p>
     To recover Erlang-like subsystem modelling of errors, we assume to have been
     passed an entity into our scope which tracks and gets all the errors. We
     will call this entity our supervisor in similar terminology to Erlang. This
@@ -96,7 +107,9 @@ categories: org
     easily wait for a go-routine forever, effectively defeating the whole
     purpose of robustness and availability. Since Clojure cannot preemptively
     reschedule code in go-routines, we have to interrupt them differently.
+</p>
 
+<p>
     We can exploit a simple observation here, almost all go-routines are written
     to allow asynchronous operations on channels. We can control these
     operations, since we already intercept them with our error-handling
@@ -110,6 +123,8 @@ categories: org
     bytecode instrumentation on the JVM to achieve something similar, but they
     have also found that preemption is not too important in practice. We cannot
     use this approach with core.async, as we also need to target JavaScript.
+</p>
+<p>
 
  <a href="https://github.com/fullcontact/full.async/pull/2#event-633151893">So my first attempt </a>
  at robust error handling was to adapt full.async. It would have been desirable
@@ -123,7 +138,9 @@ categories: org
  can also do things like <a href="https://github.com/replikativ/replikativ/blob/master/src/replikativ/connect.cljc#L32">robust connection handling</a> and
  provide error handling by functional composition to the whole replication
  system.
+</p>
 
+<p>
    While the implementation definitely needs more testing and be completely
    fleshed out, I am comfortable to say that it considerably improves on
    error-handling in core.async today. It also communicates the normal
