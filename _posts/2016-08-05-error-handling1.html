@@ -41,17 +41,17 @@ categories: org
 </p>
 
 <p>
-    Erlang uses <a href="http://learnyousomeerlang.com/errors-and-processes">links and monitors</a> to track different processes (actors) and
+    Erlang uses <a href="http://learnyousomeerlang.com/errors-and-processes">links and monitors</a> to track different processes (actors) 
     automatically and using these mechanisms preemptively terminates processes
-    monitoring other processes if they die. This importantly allows to easily
-    restart whole subsystems if something goes wrong. You do not handle the
-    error locally if you are not sure what to do about it, but let your process
-    crash, knowing that somebody might be able to catch the error on their
-    monitor and deal with appropriately. Error handling is down in general at
-    higher levels and incrementally added when the programmer experiences
-    errors. But despite this lazy approach, the restarting concept allows to
-    keep the system available as long as some higher system entity can properly
-    restart. Concretely there are many Erlang specific concepts like the
+    linking to a dying process. This importantly allows to easily restart whole
+    subsystems if something goes wrong. You do not handle the error locally if
+    you are not sure what to do about it, but let your process crash, knowing
+    that somebody might be able to catch the error on their monitor and deal
+    with appropriately. Error handling is done in general at higher levels and
+    incrementally added when the programmer experiences errors. But despite this
+    lazy approach, the restarting concept allows to keep the system available as
+    long as some higher system entity can properly
+    restart. Technically there are many Erlang specific concepts like the
     attachability of monitors to processes at runtime by refering to their name.
     But this is not essential for the concept, it only allows easier mutable
     adaption of a running system. Note that this system can equally be reloaded
