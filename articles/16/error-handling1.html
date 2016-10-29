@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Erlang inspired error handling with superv.async.</title>
+  <meta name="description" content="Clojure error handlingProper error handling is hard.  I have struggled with it oftenwithout recognizing it. You might think that you can add try-catch mechan...">
+
+  <!-- Google Fonts loaded here depending on setting in _data/options.yml true loads font, blank does not-->
+  
+    <link href='//fonts.googleapis.com/css?family=Lato:400,400italic' rel='stylesheet' type='text/css'>
+  
+  
+  <!-- Load up MathJax script if needed ... specify in /_data/options.yml file-->
+  
+    <script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+  <link rel="stylesheet" type="text/css" href="/css/tufte.css">
+  <!-- <link rel="stylesheet" type="text/css" href="/css/print.css" media="print"> -->
+
+  <link rel="canonical" href="https://whilo.github.io/articles/16/error-handling1">
+
+  <link rel="alternate" type="application/rss+xml" title="(replicate thoughts)" href="https://whilo.github.io/feed.xml" />
+</head>
+
+  <body>
+    <!--- Header and nav template site-wide -->
+<header>
+    <nav class="group">
+	<a href="/"><img class="badge" src="/assets/img/badge.png" alt="badge"></a>
+	
+		
+  	
+		
+		    
+		      <a href="/">blog</a>
+		    
+	    
+  	
+		
+		    
+		      <a href="/about/">About</a>
+		    
+	    
+  	
+		
+		    
+		      <a href="/css/print.css"></a>
+		    
+	    
+  	
+		
+  	
+	</nav>
+</header>
+
+    <article class="group">
+      <h1>Erlang inspired error handling with superv.async.</h1>
+<p class="subtitle">March 10, 2016</p>
+
+<h2 id="clojure-error-handling">Clojure error handling</h2>
+
+<p><span class="newthought">Proper error handling is hard.</span>  I have struggled with it often
+without recognizing it. You might think that you can add <code class="highlighter-rouge">try-catch</code> mechanisms
+to sections you find prone to error, typically sections doing IO with remote
+systems and services. <!--more--> While you realize such sections when you write
+them personally, this context is lost when you use libraries in an impure
+language. Clojure goes a long way in providing a pure state management concept
+which shields you from errors. As long as you properly <em>separate</em> your IO
+functions, there is a limited interface on which exceptions can propagate. But
+is this assurance good enough? <label for="Six" class="margin-toggle sidenote-number"></label><input type="checkbox" id="Six" class="margin-toggle" /><span class="sidenote">I have experienced that once your state becomes
+more and more linked to external systems, code covering these systems also tends
+to spread, yielding possibly distributed error states which need to be addressed
+on higher levels. </span></p>
+
+<p>Clojure has nice concepts of how to deal with errors beyond <code class="highlighter-rouge">try-catch</code>
+mechanisms with exceptions. There
+are
+<a href="https://github.com/scgilardi/slingshot">libraries providing the Common Lisp condition system for Clojure</a> and
+as <a href="https://www.youtube.com/watch?v=zp0OEDcAro0">Chris Houser has pointed out</a>,
+even a simple dynamic scoping will do<label for="One" class="margin-toggle sidenote-number"></label><input type="checkbox" id="One" class="margin-toggle" /><span class="sidenote">And will compose
+properly. </span>. This approach has many benefits, importantly it can allow
+robustness (restarts), which are not possible when an exception has unwound the
+stack.</p>
+
+<h2 id="erlang-error-handling">Erlang error handling</h2>
+
+<p>So does this cut it? I have faced a more profound problem with Clojure error
+handling in <a href="https://github.com/clojure/core.async">core.async</a>. But this only
+lead me to investigate the design space a bit, most prominently
+the
+<a href="http://erlang.org/download/armstrong_thesis_2003.pdf">Erlang <em>Let it crash</em> principle</a>.</p>
+
+<p><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Hindenburg_burning.jpg/631px-Hindenburg_burning.jpg" alt="Hindenburg crash" /></p>
+
+<p>So before diving into error handling with <code class="highlighter-rouge">core.async</code>, I will briefly describe
+the Erlang error handling concept. It is a succinct feature of Erlang, which
+makes
+it
+<a href="http://learnyousomeerlang.com/types-or-lack-thereof">profoundly solid as a language to build error-prone distributed systems with very high reliability despite lacking a type system</a>.
+Clojure with CSP <code class="highlighter-rouge">core.async</code> is very similar in this regard, but by default it
+lacks the same quality error handling.</p>
+
+<p>Erlang
+uses <a href="http://learnyousomeerlang.com/errors-and-processes">links and monitors</a> to
+track different processes (actors) automatically and using these mechanisms
+preemptively terminates processes linking to a dying process. This importantly
+allows to easily restart whole subsystems if something goes wrong. You do not
+handle the error locally if you are not sure what to do about it, but let your
+process crash, knowing that somebody might be able to catch the error on their
+monitor and deal with appropriately. Error handling is done in general at higher
+levels and incrementally added when the programmer experiences errors. But
+despite this lazy approach, the restarting concept allows to keep the system
+available as long as some higher system entity can properly restart. Technically
+there are many Erlang specific concepts like the linking of processes at runtime
+by refering to their name. But this is not essential for the concept, it only
+allows easier mutable adaption of a running system. <label for="Five" class="margin-toggle sidenote-number"></label><input type="checkbox" id="Five" class="margin-toggle" /><span class="sidenote">Note
+that this system can equally be reloaded by invoking the very error mechanism
+itself without having a mutable addressing scheme for processes. Clojure also
+has Stuart
+Sierra’s <a href="https://github.com/stuartsierra/component">component library</a> for hot
+code reloading. </span></p>
+
+<p>We can hence summarize the requirements for robust error handling by two
+qualities:<label for="Two" class="margin-toggle sidenote-number"></label><input type="checkbox" id="Two" class="margin-toggle" /><span class="sidenote">These are only the core requirements to recover
+robustness. </span></p>
+
+<ol>
+  <li><em>All</em> errors must be catched and dealt with somewhere</li>
+  <li>Resources must be <em>properly freed</em> to allow restarts</li>
+</ol>
+
+<p>So how does this relate to Clojure? core.async uses the concept of go-routines,
+which are not the same as Erlang processes as they lack the addressing by names
+(like PIDs). Instead they are passed around as values, expanding a call tree at
+construction. They can be bound to vars or managed in STM primitives, but
+typically are rather used as in go-lang as dedicated routines which are called.
+core.async hence also does not have the send/receive mechanism of Erlang. This
+is not critical though, as we can recover the error handling requirements above
+without them.</p>
+
+<h2 id="erlang-inspired-error-handling-in-coreasync">Erlang inspired error handling in <code class="highlighter-rouge">core.async</code></h2>
+
+<p>Coming back to error handling in core.async, it does not provide any error
+handling by default and throwing
+exceptions
+<a href="https://wyegelwel.github.io/Error-Handling-with-Clojure-Async/">is broken</a>.
+While it is easy to fix it by installing a default handler for all errors
+somewhere, it does not recover the Erlang qualities, but only installs one
+global handler. One might wonder whether <code class="highlighter-rouge">go-lang</code> itself has a good error
+handling, but I have found out that it has no comparable concepts<label for="Four" class="margin-toggle sidenote-number"></label><input type="checkbox" id="Four" class="margin-toggle" /><span class="sidenote">It is not seen as a problem really.  </span> and advertises to deal with
+errors locally when possible. This does not recover the robustness requirements
+mentioned above and can leave subsystems in a broken state by wrongly handling
+errors in a <em>too local</em> scope. So what we need to do is ensure that we catch all
+exceptions and propagate them and also that once we decide to deal with an
+exception, we are able to restart the subsystem affected by it. This requires
+<em>bidirectional</em> communication, as we need to signal our restart intent.
+Importantly it is hence not enough to put exceptions on an error channel with a
+go-try macro construct.</p>
+
+<p>To recover Erlang-<em>like</em> subsystem modelling of errors, we need to assume to
+have been passed an entity into our scope which tracks and gets all the errors.
+We will call this entity our supervisor in similar terminology to Erlang. This
+entity needs to track all errors (1.) and all go-routines (2.). The latter is
+necessary so it can wait for their termination, if it decides to restart the
+subsystem. There is only one problem left here, which is nicely solved in Erlang
+by its <em>preemptive scheduling</em> and error-handling support in the runtime. How to
+terminate the go-routines to <em>enforce</em> a restart? The supervisor could easily wait
+for a go-routine<label for="Three" class="margin-toggle sidenote-number"></label><input type="checkbox" id="Three" class="margin-toggle" /><span class="sidenote">e.g. a <code class="highlighter-rouge">go-loop</code> </span> forever, effectively
+defeating the whole purpose of robustness and availability. Since Clojure cannot
+preemptively reschedule code in go-routines, we have to interrupt them
+differently.</p>
+
+<p>We can exploit a simple observation here, almost all go-routines are written to
+allow asynchronous operations on channels which typically cover most of their
+wallclock time. We can control these blocking operations, since we already
+intercept them with our error-handling mechanism, unblocking them by throwing an
+abortion in the context, recursively unwinding all parallel go-routines. While
+this behaviour goes a long way, the programmer needs to be aware that
+go-routines with code that can take a long time without asynchronous operations
+(e.g. with blocking IO, long computations etc.) is problematic. It is
+cooperative concurrency after all.</p>
+
+<p>I haven’t found this to be a problem yet, but there is little we can do here,
+except of doing some deep code transformation with autoinjection of code in the
+go-macro, which still would not help with outside JVM
+code. <a href="http://docs.paralleluniverse.co/pulsar/">Pulsar</a> uses bytecode
+instrumentation on the JVM to achieve something similar, but they have also
+found that preemption is not too important in practice. We cannot use this
+low-level approach with <code class="highlighter-rouge">core.async</code>, as we also need to target JavaScript. (One
+could do differnt things on the two hosts though.)</p>
+
+<p><a href="https://github.com/fullcontact/full.async/pull/2#event-633151893">So my first attempt</a> at
+robust error handling was to
+adapt <a href="https://github.com/fullcontact/full.async">full.async</a>. It would have
+been desirable to use dynamic binding for the supervisor as it is a typical
+example for a good dynamic binding and the already available <code class="highlighter-rouge">go-try</code> and <code class="highlighter-rouge">&lt;?</code>
+constructs keep working transparently. While this dynamic binding approach
+worked well for the JVM, it
+proved
+<a href="http://dev.clojure.org/jira/browse/CLJS-1634">incompatible with ClojureScripts dynamical binding</a>.</p>
+
+<p>Somewhat reluctantly I decided
+to <a href="https://github.com/replikativ/superv.async">fork full.async as superv.async</a>
+then and add a lexical argument for the supervisor to all corresponding
+full.async operations. While this adds some inconvenience, the benefits outweigh
+the costs for me. Not only am I now able to track all exceptions in parallel
+go-routines appropriately, I can also do things
+like
+<a href="https://github.com/replikativ/replikativ/blob/master/src/replikativ/connect.cljc#L32">robust connection handling</a> and
+provide error handling by functional composition to the whole replication
+system.</p>
+
+<p><label for="Seven" class="margin-toggle"> ⊕</label><input type="checkbox" id="Seven" class="margin-toggle" /><span class="marginnote">An example invocation of a supervisor with the corresponding async primitives and operations. </span></p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">let</span><span class="w"> </span><span class="p">[</span><span class="n">try-fn</span><span class="w"> </span><span class="p">(</span><span class="k">fn</span><span class="w"> </span><span class="p">[</span><span class="n">S</span><span class="p">]</span><span class="w"> </span><span class="p">(</span><span class="nf">go-try</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">throw</span><span class="w"> </span><span class="p">(</span><span class="nf">ex-info</span><span class="w"> </span><span class="s">"stale"</span><span class="w"> </span><span class="p">{}))))</span><span class="w">
+      </span><span class="n">start-fn</span><span class="w"> </span><span class="p">(</span><span class="k">fn</span><span class="w"> </span><span class="p">[</span><span class="n">S</span><span class="p">]</span><span class="w"> </span><span class="c1">;; will be called again on retries
+</span><span class="w">                 </span><span class="p">(</span><span class="nf">go-try</span><span class="w"> </span><span class="n">S</span><span class="w">
+                   </span><span class="p">(</span><span class="nf">on-abort</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="c1">;; you must ensure the freeing of resources for proper restarts
+</span><span class="w">                     </span><span class="s">"do cleanup here"</span><span class="p">)</span><span class="w">
+                   </span><span class="p">(</span><span class="nf">try-fn</span><span class="w"> </span><span class="n">S</span><span class="p">)</span><span class="w"> </span><span class="c1">;; triggers restart after stale-timeout
+</span><span class="w">                   </span><span class="mi">42</span><span class="p">))]</span><span class="w">
+  </span><span class="p">(</span><span class="nf">restarting-supervisor</span><span class="w"> </span><span class="n">start-fn</span><span class="w"> </span><span class="no">:retries</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="no">:stale-timeout</span><span class="w"> </span><span class="mi">1000</span><span class="p">))</span></code></pre></figure>
+
+<p>While the implementation definitely needs more testing to be really fleshed out,
+I am comfortable to say that it considerably improves on error-handling in
+core.async today. It also communicates the normal exceptions to an embedding
+environment, the supervisor just returns it in case it cannot deal with it. I
+hope you find it useful and report back in
+the
+<a href="https://gitter.im/replikativ/replikativ?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge">gitter chat</a> or
+on the Clojure mailing list :).</p>
+
+
+
+    </article>
+    <span class="print-footer">Erlang inspired error handling with superv.async. - March 10, 2016 - christian weilbach</span>
+    <footer>
+  <hr class="slender">
+  <ul class="footer-links">
+    <!-- <li><a href="mailto:hate@spam.net"><span class="icon-mail"></span></a></li>     -->
+    
+      <li>
+        <a href="//www.twitter.com/wh1lo"><span class="icon-twitter"></span></a>
+      </li>
+    
+      <li>
+        <a href="//github.com/whilo"><span class="icon-github"></span></a>
+      </li>
+    
+      <li>
+        <a href="/feed.xml"><span class="icon-feed"></span></a>
+      </li>
+      
+  </ul>
+<div class="credits">
+<span>&copy; 2016 &nbsp;&nbsp;CHRISTIAN WEILBACH</span></br> <br>
+<span>This site created with the <a href="//github.com/clayh53/tufte-jekyll">Tufte theme for (replicate thoughts) </a> in <a href="//jekyllrb.com">Jekyll</a>.</span> 
+</div>  
+</footer>
+
+  </body>
+</html>
