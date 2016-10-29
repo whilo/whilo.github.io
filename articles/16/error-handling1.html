@@ -117,12 +117,8 @@ despite this lazy approach, the restarting concept allows to keep the system
 available as long as some higher system entity can properly restart. Technically
 there are many Erlang specific concepts like the linking of processes at runtime
 by refering to their name. But this is not essential for the concept, it only
-allows easier mutable adaption of a running system. <label for="Five" class="margin-toggle sidenote-number"></label><input type="checkbox" id="Five" class="margin-toggle" /><span class="sidenote">Note
-that this system can equally be reloaded by invoking the very error mechanism
-itself without having a mutable addressing scheme for processes. Clojure also
-has Stuart
-Sierra’s <a href="https://github.com/stuartsierra/component">component library</a> for hot
-code reloading. </span></p>
+allows easier mutable adaptation of a running system and fits Erlang’s CSP
+design.</p>
 
 <p>We can hence summarize the requirements for robust error handling by two
 qualities:<label for="Two" class="margin-toggle sidenote-number"></label><input type="checkbox" id="Two" class="margin-toggle" /><span class="sidenote">These are only the core requirements to recover
