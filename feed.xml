@@ -5,8 +5,8 @@
     <description>A blog about distributed systems, machine learning and critical theory.</description>
     <link>https://whilo.github.io/</link>
     <atom:link href="https://whilo.github.io/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sat, 12 Nov 2016 03:13:33 +0100</pubDate>
-    <lastBuildDate>Sat, 12 Nov 2016 03:13:33 +0100</lastBuildDate>
+    <pubDate>Sat, 12 Nov 2016 12:14:06 +0100</pubDate>
+    <lastBuildDate>Sat, 12 Nov 2016 12:14:06 +0100</lastBuildDate>
     <generator>Jekyll v3.1.6</generator>
     
       <item>
@@ -27,17 +27,17 @@ application needs it. This then complects what features are really required by
 the application and what is used just because the storage solution prescribes
 it. &lt;/span&gt;&lt;/p&gt;
 
-&lt;p&gt;With ClojureScript in particular a problem arises, as this is not a
-local decision which can be factored away, but either you introduce Callbacks
+&lt;p&gt;With ClojureScript in particular a problem arises, as this is not a local
+decision which can be factored away, but either you introduce callbacks
 everywhere or you default
 to &lt;a href=&quot;https://github.com/clojure/core.async&quot;&gt;core.async&lt;/a&gt;, besides other more
 exotic options. You then need to wrap all your code in go-routines for
-ClojureScript and hence for platform-neutral code in the same way that all your
-code becomes affected by IO in Haskell. Since I wanted to have a reasonable
-default, I wanted to pick the back then new core.async and get a sane sequential
-programming model. This put me out of luck, as all previous JVM libraries and
-approaches use synchronous IO. I also wanted to start with the minimum
-necessary, which was the semantics of a Clojure hash-map for me.&lt;/p&gt;
+ClojureScript and hence platform-neutral code becomes in the same way affected
+as code is by IO in Haskell. Since I wanted to have a reasonable default, we
+picked the back then new core.async and get a sane sequential programming model.
+This put me out of luck, as all previous JVM libraries and approaches use
+synchronous IO. I also wanted to start with the minimum necessary, which was the
+semantics of a Clojure hash-map for me.&lt;/p&gt;
 
 &lt;p&gt;The situation has barely changed as truely platform neutral code for IO
 operations like storage and network is not yet well established in the
@@ -53,11 +53,12 @@ material and the language can be switched to address different
 tradeoffs:
 &lt;img src=&quot;https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Lachish_III_obv.JPG/595px-Lachish_III_obv.JPG&quot; alt=&quot;Historic piece of stone with letters&quot; /&gt; &lt;/span&gt;&lt;/p&gt;
 
-&lt;p&gt;I designed and we use konserve as a simple interface to do common tasks like
-&lt;em&gt;session storages&lt;/em&gt; in backends, file storage for &lt;em&gt;caches of binary data&lt;/em&gt; in
-Clojure(Script) and in general any way to durably &lt;em&gt;store state&lt;/em&gt;. Furthermore
-advanced storage concepts should be facilitated by such a building block for
-persistent datastructure concepts, e.g.
+&lt;p&gt;I designed and we use konserve in production as a simple interface to do common
+tasks like &lt;em&gt;session storages&lt;/em&gt; in backends, file storage for &lt;em&gt;caches of binary
+data&lt;/em&gt; in Clojure(Script) and in general any way to durably &lt;em&gt;store state&lt;/em&gt; when
+Datomic’s query capabilities are not necessary. Furthermore advanced storage
+concepts should be facilitated by such a building block for persistent
+datastructure concepts, e.g.
 the &lt;a href=&quot;https://github.com/datacrypt-project/hitchhiker-tree&quot;&gt;hitchhiker-tree&lt;/a&gt;
 or &lt;a href=&quot;https://github.com/replikativ/durable-persistence&quot;&gt;durable-persistence&lt;/a&gt; and
 particulary for
@@ -69,8 +70,10 @@ So what is desired?&lt;/p&gt;
   &lt;li&gt;&lt;em&gt;simple&lt;/em&gt;&lt;label for=&quot;Three&quot; class=&quot;margin-toggle sidenote-number&quot;&gt;&lt;/label&gt;&lt;input type=&quot;checkbox&quot; id=&quot;Three&quot; class=&quot;margin-toggle&quot; /&gt;&lt;span class=&quot;sidenote&quot;&gt;In Rich Hickey’s sense as logically simple. &lt;/span&gt;
 durable IO protocol as a building block&lt;/li&gt;
   &lt;li&gt;&lt;em&gt;composable&lt;/em&gt; to more sophisticated semantics, e.g. append-log&lt;/li&gt;
-  &lt;li&gt;&lt;em&gt;threadsafe&lt;/em&gt;&lt;/li&gt;
-  &lt;li&gt;&lt;em&gt;ACID&lt;/em&gt; properties on the key level&lt;/li&gt;
+  &lt;li&gt;&lt;em&gt;threadsafe&lt;/em&gt; and safe to use without draining core.async’s threadpool with
+synchronous IO&lt;/li&gt;
+  &lt;li&gt;&lt;em&gt;ACID&lt;/em&gt; properties on the key level, where consistency and durability depend on
+the underlying store while atomicity and isolation are provided by konserve&lt;/li&gt;
   &lt;li&gt;should be reasonable for &lt;em&gt;95% of usage&lt;/em&gt;: both in &lt;em&gt;performance&lt;/em&gt; and &lt;em&gt;function&lt;/em&gt;&lt;/li&gt;
   &lt;li&gt;&lt;em&gt;minimalism&lt;/em&gt;: pluggable different backend stores fullfilling konserve semantics:
 memory, filestore, IndexedDB, LevelDB, redis, riak, CouchDB&lt;/li&gt;
@@ -79,34 +82,36 @@ memory, filestore, IndexedDB, LevelDB, redis, riak, CouchDB&lt;/li&gt;
   &lt;li&gt;first-class, &lt;em&gt;pluggable serialization&lt;/em&gt; mechanism
 (through &lt;a href=&quot;https://github.com/replikativ/incognito&quot;&gt;incognito&lt;/a&gt;)&lt;/li&gt;
   &lt;li&gt;allow &lt;em&gt;raw binary&lt;/em&gt; IO if desired&lt;/li&gt;
-  &lt;li&gt;&lt;em&gt;hosted&lt;/em&gt; concept of transparent exposure of the underlying store&lt;/li&gt;
+  &lt;li&gt;&lt;em&gt;hosted&lt;/em&gt; concept with transparent access to the underlying store&lt;/li&gt;
   &lt;li&gt;&lt;em&gt;minimal dependencies&lt;/em&gt; by default&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;By reducing the storage interface to a simple key-value store with a core.async
-interface and edn serialization one gets a very good tradeoff to not care about
-the interface in the code:&lt;/p&gt;
+interface and edn serialization one gets a very good tradeoff to not having to
+reason about the interface:&lt;/p&gt;
 
 &lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-clojure&quot; data-lang=&quot;clojure&quot;&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;&amp;lt;!!&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;k/assoc-in&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;:bar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;42&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;&amp;lt;!!&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;k/update-in&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;:bar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;inc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;&amp;lt;!!&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;k/get-in&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;:bar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]))&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+  &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;&amp;lt;!!&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;k/update-in&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;:bar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;inc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;;; =&amp;gt; [42 43]
+&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;  &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;&amp;lt;!!&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;k/get-in&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;:bar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]))&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;h2 id=&quot;opting-out&quot;&gt;Opting out&lt;/h2&gt;
 
-&lt;p&gt;It is furthermore still possible to get gradually more &lt;em&gt;direct access&lt;/em&gt; to the
-underlying store possible for performance or specific features like
-transactional safety or batch processing, similar to the way Clojure exposes the
-underlying JVM primitives and interfaces. Konserve furthermore reuses popular
-Clojure libraries for backends where possible to not reinvent the wheel and
-allow comfortable direct access.&lt;/p&gt;
+&lt;p&gt;It is still possible to get gradually more &lt;em&gt;direct access&lt;/em&gt; to the underlying
+store possible, e.g. for performance or specific features like transactional
+safety or batch processing, similar to the way Clojure exposes the underlying
+JVM primitives and interfaces. Konserve furthermore reuses popular Clojure
+libraries for backends where possible to not reinvent the wheel and allow
+comfortable direct access. Konserve provides a reasonable default store without
+dependencies or setup required for the JVM (filestore) and the Browser
+(IndexedDB).&lt;/p&gt;
 
 &lt;p&gt;Performance is fairly good for small key-value pairs accessed in parallel, which
-is possible for instance in replikativ by using Merkle-Tree like structures. In
-general you pay a neglible cost for the konserve protocol and the usual cost for
-edn serialization depending on the serializer. The implementation of more
-advanced storage features on top is intended, for instance a very fast
-append-log with reduction is already implemented and used in replikativ. &lt;label for=&quot;One&quot; class=&quot;margin-toggle sidenote-number&quot;&gt;&lt;/label&gt;&lt;input type=&quot;checkbox&quot; id=&quot;One&quot; class=&quot;margin-toggle&quot; /&gt;&lt;span class=&quot;sidenote&quot;&gt;A write-through caching scheme could also become attractive as
-well as a small REST interface exposing konserve operations. &lt;/span&gt;&lt;/p&gt;
+is exploited for instance in replikativ by using Merkle-Tree like structures. In
+general you pay a neglegible cost for the konserve protocol and the usual cost
+for edn serialization depending on the serializer. The implementation of more
+advanced storage features on top is intended, for instance a fast append-log
+with reduction is already implemented and used in replikativ. &lt;label for=&quot;One&quot; class=&quot;margin-toggle sidenote-number&quot;&gt;&lt;/label&gt;&lt;input type=&quot;checkbox&quot; id=&quot;One&quot; class=&quot;margin-toggle&quot; /&gt;&lt;span class=&quot;sidenote&quot;&gt;A write-through caching scheme could also become attractive as well as a small
+REST interface exposing konserve operations. &lt;/span&gt;&lt;/p&gt;
 
 &lt;p&gt;Dealing with errors in core.async &lt;a href=&quot;https://whilo.github.io/articles/16/error-handling1&quot;&gt;is not always easy&lt;/a&gt;, so it can be helpful to
 use &lt;a href=&quot;https://github.com/replikativ/superv.async&quot;&gt;superv.async&lt;/a&gt; instead of plain

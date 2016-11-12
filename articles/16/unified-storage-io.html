@@ -77,17 +77,17 @@ application needs it. This then complects what features are really required by
 the application and what is used just because the storage solution prescribes
 it. </span></p>
 
-<p>With ClojureScript in particular a problem arises, as this is not a
-local decision which can be factored away, but either you introduce Callbacks
+<p>With ClojureScript in particular a problem arises, as this is not a local
+decision which can be factored away, but either you introduce callbacks
 everywhere or you default
 to <a href="https://github.com/clojure/core.async">core.async</a>, besides other more
 exotic options. You then need to wrap all your code in go-routines for
-ClojureScript and hence for platform-neutral code in the same way that all your
-code becomes affected by IO in Haskell. Since I wanted to have a reasonable
-default, I wanted to pick the back then new core.async and get a sane sequential
-programming model. This put me out of luck, as all previous JVM libraries and
-approaches use synchronous IO. I also wanted to start with the minimum
-necessary, which was the semantics of a Clojure hash-map for me.</p>
+ClojureScript and hence platform-neutral code becomes in the same way affected
+as code is by IO in Haskell. Since I wanted to have a reasonable default, we
+picked the back then new core.async and get a sane sequential programming model.
+This put me out of luck, as all previous JVM libraries and approaches use
+synchronous IO. I also wanted to start with the minimum necessary, which was the
+semantics of a Clojure hash-map for me.</p>
 
 <p>The situation has barely changed as truely platform neutral code for IO
 operations like storage and network is not yet well established in the
@@ -103,11 +103,12 @@ material and the language can be switched to address different
 tradeoffs:
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Lachish_III_obv.JPG/595px-Lachish_III_obv.JPG" alt="Historic piece of stone with letters" /> </span></p>
 
-<p>I designed and we use konserve as a simple interface to do common tasks like
-<em>session storages</em> in backends, file storage for <em>caches of binary data</em> in
-Clojure(Script) and in general any way to durably <em>store state</em>. Furthermore
-advanced storage concepts should be facilitated by such a building block for
-persistent datastructure concepts, e.g.
+<p>I designed and we use konserve in production as a simple interface to do common
+tasks like <em>session storages</em> in backends, file storage for <em>caches of binary
+data</em> in Clojure(Script) and in general any way to durably <em>store state</em> when
+Datomic’s query capabilities are not necessary. Furthermore advanced storage
+concepts should be facilitated by such a building block for persistent
+datastructure concepts, e.g.
 the <a href="https://github.com/datacrypt-project/hitchhiker-tree">hitchhiker-tree</a>
 or <a href="https://github.com/replikativ/durable-persistence">durable-persistence</a> and
 particulary for
@@ -119,8 +120,10 @@ So what is desired?</p>
   <li><em>simple</em><label for="Three" class="margin-toggle sidenote-number"></label><input type="checkbox" id="Three" class="margin-toggle" /><span class="sidenote">In Rich Hickey’s sense as logically simple. </span>
 durable IO protocol as a building block</li>
   <li><em>composable</em> to more sophisticated semantics, e.g. append-log</li>
-  <li><em>threadsafe</em></li>
-  <li><em>ACID</em> properties on the key level</li>
+  <li><em>threadsafe</em> and safe to use without draining core.async’s threadpool with
+synchronous IO</li>
+  <li><em>ACID</em> properties on the key level, where consistency and durability depend on
+the underlying store while atomicity and isolation are provided by konserve</li>
   <li>should be reasonable for <em>95% of usage</em>: both in <em>performance</em> and <em>function</em></li>
   <li><em>minimalism</em>: pluggable different backend stores fullfilling konserve semantics:
 memory, filestore, IndexedDB, LevelDB, redis, riak, CouchDB</li>
@@ -129,34 +132,36 @@ memory, filestore, IndexedDB, LevelDB, redis, riak, CouchDB</li>
   <li>first-class, <em>pluggable serialization</em> mechanism
 (through <a href="https://github.com/replikativ/incognito">incognito</a>)</li>
   <li>allow <em>raw binary</em> IO if desired</li>
-  <li><em>hosted</em> concept of transparent exposure of the underlying store</li>
+  <li><em>hosted</em> concept with transparent access to the underlying store</li>
   <li><em>minimal dependencies</em> by default</li>
 </ul>
 
 <p>By reducing the storage interface to a simple key-value store with a core.async
-interface and edn serialization one gets a very good tradeoff to not care about
-the interface in the code:</p>
+interface and edn serialization one gets a very good tradeoff to not having to
+reason about the interface:</p>
 
 <figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nf">&lt;!!</span><span class="w"> </span><span class="p">(</span><span class="nf">k/assoc-in</span><span class="w"> </span><span class="n">store</span><span class="w"> </span><span class="p">[</span><span class="no">:bar</span><span class="p">]</span><span class="w"> </span><span class="mi">42</span><span class="p">))</span><span class="w">
-</span><span class="p">(</span><span class="nf">&lt;!!</span><span class="w"> </span><span class="p">(</span><span class="nf">k/update-in</span><span class="w"> </span><span class="n">store</span><span class="w"> </span><span class="p">[</span><span class="no">:bar</span><span class="p">]</span><span class="w"> </span><span class="nb">inc</span><span class="p">))</span><span class="w">
-</span><span class="p">(</span><span class="nf">&lt;!!</span><span class="w"> </span><span class="p">(</span><span class="nf">k/get-in</span><span class="w"> </span><span class="n">store</span><span class="w"> </span><span class="p">[</span><span class="no">:bar</span><span class="p">]))</span></code></pre></figure>
+  </span><span class="p">(</span><span class="nf">&lt;!!</span><span class="w"> </span><span class="p">(</span><span class="nf">k/update-in</span><span class="w"> </span><span class="n">store</span><span class="w"> </span><span class="p">[</span><span class="no">:bar</span><span class="p">]</span><span class="w"> </span><span class="nb">inc</span><span class="p">))</span><span class="w"> </span><span class="c1">;; =&gt; [42 43]
+</span><span class="w">  </span><span class="p">(</span><span class="nf">&lt;!!</span><span class="w"> </span><span class="p">(</span><span class="nf">k/get-in</span><span class="w"> </span><span class="n">store</span><span class="w"> </span><span class="p">[</span><span class="no">:bar</span><span class="p">]))</span><span class="w"> </span></code></pre></figure>
 
 <h2 id="opting-out">Opting out</h2>
 
-<p>It is furthermore still possible to get gradually more <em>direct access</em> to the
-underlying store possible for performance or specific features like
-transactional safety or batch processing, similar to the way Clojure exposes the
-underlying JVM primitives and interfaces. Konserve furthermore reuses popular
-Clojure libraries for backends where possible to not reinvent the wheel and
-allow comfortable direct access.</p>
+<p>It is still possible to get gradually more <em>direct access</em> to the underlying
+store possible, e.g. for performance or specific features like transactional
+safety or batch processing, similar to the way Clojure exposes the underlying
+JVM primitives and interfaces. Konserve furthermore reuses popular Clojure
+libraries for backends where possible to not reinvent the wheel and allow
+comfortable direct access. Konserve provides a reasonable default store without
+dependencies or setup required for the JVM (filestore) and the Browser
+(IndexedDB).</p>
 
 <p>Performance is fairly good for small key-value pairs accessed in parallel, which
-is possible for instance in replikativ by using Merkle-Tree like structures. In
-general you pay a neglible cost for the konserve protocol and the usual cost for
-edn serialization depending on the serializer. The implementation of more
-advanced storage features on top is intended, for instance a very fast
-append-log with reduction is already implemented and used in replikativ. <label for="One" class="margin-toggle sidenote-number"></label><input type="checkbox" id="One" class="margin-toggle" /><span class="sidenote">A write-through caching scheme could also become attractive as
-well as a small REST interface exposing konserve operations. </span></p>
+is exploited for instance in replikativ by using Merkle-Tree like structures. In
+general you pay a neglegible cost for the konserve protocol and the usual cost
+for edn serialization depending on the serializer. The implementation of more
+advanced storage features on top is intended, for instance a fast append-log
+with reduction is already implemented and used in replikativ. <label for="One" class="margin-toggle sidenote-number"></label><input type="checkbox" id="One" class="margin-toggle" /><span class="sidenote">A write-through caching scheme could also become attractive as well as a small
+REST interface exposing konserve operations. </span></p>
 
 <p>Dealing with errors in core.async <a href="https://whilo.github.io/articles/16/error-handling1">is not always easy</a>, so it can be helpful to
 use <a href="https://github.com/replikativ/superv.async">superv.async</a> instead of plain
