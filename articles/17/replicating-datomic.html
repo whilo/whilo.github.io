@@ -5,8 +5,8 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>blog</title>
-  <meta name="description" content="A blog about distributed systems, machine learning and critical theory.">
+  <title>Replicating with Datomic</title>
+  <meta name="description" content="MotivationI will focus in this post on a practical application of replikativ. I will talkmore about the theoretical underpinnings and motivations in the next...">
 
   <!-- Google Fonts loaded here depending on setting in _data/options.yml true loads font, blank does not-->
   
@@ -21,12 +21,12 @@
   <link rel="stylesheet" type="text/css" href="/css/tufte.css">
   <!-- <link rel="stylesheet" type="text/css" href="/css/print.css" media="print"> -->
 
-  <link rel="canonical" href="https://whilo.github.io/">
+  <link rel="canonical" href="https://whilo.github.io/articles/17/replicating-datomic">
 
   <link rel="alternate" type="application/rss+xml" title="(replicate thoughts)" href="https://whilo.github.io/feed.xml" />
 </head>
 
-  <body class="full-width">
+  <body>
     <!--- Header and nav template site-wide -->
 <header>
     <nav class="group">
@@ -36,7 +36,7 @@
   	
 		
 		    
-		      <a class="active" href="/" class="active">blog</a>
+		      <a href="/">blog</a>
 		    
 	    
   	
@@ -57,15 +57,11 @@
 	</nav>
 </header>
 
-    <article>
-        <h1 class="content-listing-header sans">(replicate thoughts)</h1>
-  <ul class="content-listing ">
-          
-        <li class="listing">
-          <hr class="slender">
-          <a href="/articles/17/replicating-datomic"><h3 class="contrast">Replicating with Datomic</h3></a>
-          <br><span class="smaller">February 11, 2017</span>  <br/>
-          <div><h2 id="motivation">Motivation</h2>
+    <article class="group">
+      <h1>Replicating with Datomic</h1>
+<p class="subtitle">February 11, 2017</p>
+
+<h2 id="motivation">Motivation</h2>
 
 <p>I will focus in this post on a practical application of replikativ. I will talk
 more about the theoretical underpinnings and motivations in the next post. So in
@@ -360,52 +356,11 @@ decouple distributed data management for you. Or to just store some raw data for
 later retrieval. If you have any problems with the examples, feel free to join
 our <a href="https://gitter.im/replikativ/replikativ">chat</a> and complain :).</p>
 
-</div> 
-        </li>
-          
-        <li class="listing">
-          <hr class="slender">
-          <a href="/articles/16/unified-storage-io"><h3 class="contrast">Unified storage IO</h3></a>
-          <br><span class="smaller">November 12, 2016</span>  <br/>
-          <div><h2 id="why-not-just-use-store-x">Why not just use store X?</h2>
 
-<p><span class="newthought">Durability should be simple and flexible.</span>  When I started to
-design <a href="https://github.com/replikativ/replikativ">replikativ</a> I investigated
-many different IO options, including many key-value or document stores like
-CouchDB, Riak, MongoDB, IndexedDB etc.</p>
 
-</div> 
-        </li>
-          
-        <li class="listing">
-          <hr class="slender">
-          <a href="/articles/16/error-handling1"><h3 class="contrast">Erlang inspired error handling with superv.async.</h3></a>
-          <br><span class="smaller">March 10, 2016</span>  <br/>
-          <div><h2 id="clojure-error-handling">Clojure error handling</h2>
-
-<p><span class="newthought">Proper error handling is hard.</span>  I have struggled with it often
-without recognizing it. You might think that you can add <code class="highlighter-rouge">try-catch</code> mechanisms
-to sections you find prone to error, typically sections doing IO with remote
-systems and services.</p>
-
-</div> 
-        </li>
-          
-        <li class="listing">
-          <hr class="slender">
-          <a href="/articles/16/introduction"><h3 class="contrast">Welcome to my blog.</h3></a>
-          <br><span class="smaller">March 10, 2016</span>  <br/>
-          <div><h2 id="overview">Overview</h2>
-
-<p>On this blog I will track different issues I am facing in the pursuit of distributed systems, including direct implementation aspects and issues with <a href="http://github.com/replikativ/replikativ">replikativ</a>. Additionally I will write about different machine learning topics I am involved in. I hope you find it useful, feedback is appreciated!</p>
-
-</div> 
-        </li>
-    
-  </ul>
 
     </article>
-    <span class="print-footer">blog - christian weilbach</span>
+    <span class="print-footer">Replicating with Datomic - February 11, 2017 - christian weilbach</span>
     <footer>
   <hr class="slender">
   <ul class="footer-links">
