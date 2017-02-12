@@ -5,8 +5,8 @@
     <description>A blog about distributed systems, machine learning and critical theory.</description>
     <link>https://whilo.github.io/</link>
     <atom:link href="https://whilo.github.io/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sun, 12 Feb 2017 01:16:57 +0100</pubDate>
-    <lastBuildDate>Sun, 12 Feb 2017 01:16:57 +0100</lastBuildDate>
+    <pubDate>Sun, 12 Feb 2017 01:18:55 +0100</pubDate>
+    <lastBuildDate>Sun, 12 Feb 2017 01:18:55 +0100</lastBuildDate>
     <generator>Jekyll v3.1.6</generator>
     
       <item>
@@ -17,11 +17,11 @@
 more about the theoretical underpinnings and motivations in the next post. So in
 this concrete example we want to store tweets. The whole code is
 available &lt;a href=&quot;https://github.com/replikativ/twitter-collector&quot;&gt;here&lt;/a&gt;. We do not
-know yet what we want to do with them exactly, but we want to have a
+know yet what we want to do with them exactly yet, but we want to have a
 straightforward way to access them later. This is what replikativ was built for:
 An open data management layer as a baseline for distributed applications. &lt;label for=&quot;One&quot; class=&quot;margin-toggle&quot;&gt; ⊕&lt;/label&gt;&lt;input type=&quot;checkbox&quot; id=&quot;One&quot; class=&quot;margin-toggle&quot; /&gt;&lt;span class=&quot;marginnote&quot;&gt;Actually local applications are a subset of distributed
 applications, so this means &lt;em&gt;all&lt;/em&gt; computer programs. This generality is not
-meaningful here though. &lt;/span&gt;&lt;/p&gt;
+meaningful here though. &lt;/span&gt; &lt;!--more--&gt;&lt;/p&gt;
 
 &lt;h2 id=&quot;setup&quot;&gt;Setup&lt;/h2&gt;
 
