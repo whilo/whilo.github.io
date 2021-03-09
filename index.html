@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>blog</title>
+  <meta name="description" content="A blog about distributed systems, machine learning and critical theory.">
+
+  <!-- Google Fonts loaded here depending on setting in _data/options.yml true loads font, blank does not-->
+  
+    <link href='//fonts.googleapis.com/css?family=Lato:400,400italic' rel='stylesheet' type='text/css'>
+  
+  
+  <!-- Load up MathJax script if needed ... specify in /_data/options.yml file-->
+  
+    <script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+  <link rel="stylesheet" type="text/css" href="/css/tufte.css">
+  <!-- <link rel="stylesheet" type="text/css" href="/css/print.css" media="print"> -->
+
+  <link rel="canonical" href="https://whilo.github.io/">
+
+  <link rel="alternate" type="application/rss+xml" title="(replicate thoughts)" href="https://whilo.github.io/feed.xml" />
+</head>
+
+  <body class="full-width">
+    <!--- Header and nav template site-wide -->
+<header>
+    <nav class="group">
+	<a href="/"><img class="badge" src="/assets/img/badge.png" alt="badge"></a>
+	
+		
+  	
+		
+		    
+		      <a class="active" href="/" class="active">blog</a>
+		    
+	    
+  	
+		
+		    
+		      <a href="/about/">About</a>
+		    
+	    
+  	
+		
+		    
+		      <a href="/css/print.css"></a>
+		    
+	    
+  	
+		
+  	
+	</nav>
+</header>
+
+    <article>
+        <h1 class="content-listing-header sans">(replicate thoughts)</h1>
+  <ul class="content-listing ">
+          
+        <li class="listing">
+          <hr class="slender">
+          <a href="/articles/17/replicating-datomic"><h3 class="contrast">Replicating with Datomic</h3></a>
+          <br><span class="smaller">February 11, 2017</span>  <br/>
+          <div><h2 id="motivation">Motivation</h2>
+
+<p>I will focus in this post on a practical application of replikativ. I will talk
+more about the theoretical underpinnings and motivations in the next post. So in
+this concrete example we want to store tweets. The whole code is
+available <a href="https://github.com/replikativ/twitter-collector">here</a>. We do not
+know yet what we want to do with them exactly, but we want to have a
+straightforward way to access them later. This is what replikativ was built for:
+An open data management layer as a baseline for distributed applications. <label for="One" class="margin-toggle"> ⊕</label><input type="checkbox" id="One" class="margin-toggle" /><span class="marginnote">Actually local applications are a subset of distributed
+applications, so this means <em>all</em> computer programs. This generality is not
+meaningful here though. </span></p>
+
+</div> 
+        </li>
+          
+        <li class="listing">
+          <hr class="slender">
+          <a href="/articles/16/unified-storage-io"><h3 class="contrast">Unified storage IO</h3></a>
+          <br><span class="smaller">November 12, 2016</span>  <br/>
+          <div><h2 id="why-not-just-use-store-x">Why not just use store X?</h2>
+
+<p><span class="newthought">Durability should be simple and flexible.</span>  When I started to
+design <a href="https://github.com/replikativ/replikativ">replikativ</a> I investigated
+many different IO options, including many key-value or document stores like
+CouchDB, Riak, MongoDB, IndexedDB etc.</p>
+
+</div> 
+        </li>
+          
+        <li class="listing">
+          <hr class="slender">
+          <a href="/articles/16/error-handling1"><h3 class="contrast">Erlang inspired error handling with superv.async.</h3></a>
+          <br><span class="smaller">March 10, 2016</span>  <br/>
+          <div><h2 id="clojure-error-handling">Clojure error handling</h2>
+
+<p><span class="newthought">Proper error handling is hard.</span>  I have struggled with it often
+without recognizing it. You might think that you can add <code class="highlighter-rouge">try-catch</code> mechanisms
+to sections you find prone to error, typically sections doing IO with remote
+systems and services.</p>
+
+</div> 
+        </li>
+          
+        <li class="listing">
+          <hr class="slender">
+          <a href="/articles/16/introduction"><h3 class="contrast">Welcome to my blog.</h3></a>
+          <br><span class="smaller">March 10, 2016</span>  <br/>
+          <div><h2 id="overview">Overview</h2>
+
+<p>On this blog I will track different issues I am facing in the pursuit of distributed systems, including direct implementation aspects and issues with <a href="http://github.com/replikativ/replikativ">replikativ</a>. Additionally I will write about different machine learning topics I am involved in. I hope you find it useful, feedback is appreciated!</p>
+
+</div> 
+        </li>
+    
+  </ul>
+
+    </article>
+    <span class="print-footer">blog - christian weilbach</span>
+    <footer>
+  <hr class="slender">
+  <ul class="footer-links">
+    <!-- <li><a href="mailto:hate@spam.net"><span class="icon-mail"></span></a></li>     -->
+    
+      <li>
+        <a href="mailto:christian@topiq.es"><span class="icon-mail"></span></a>
+      </li>
+    
+      <li>
+        <a href="//www.twitter.com/wh1lo"><span class="icon-twitter"></span></a>
+      </li>
+    
+      <li>
+        <a href="//github.com/whilo"><span class="icon-github"></span></a>
+      </li>
+    
+      <li>
+        <a href="/feed.xml"><span class="icon-feed"></span></a>
+      </li>
+      
+  </ul>
+<div class="credits">
+<span>&copy; 2017 &nbsp;&nbsp;CHRISTIAN WEILBACH</span></br> <br>
+<span>This site created with the <a href="//github.com/clayh53/tufte-jekyll">Tufte theme for (replicate thoughts) </a> in <a href="//jekyllrb.com">Jekyll</a>.</span> 
+</div>  
+</footer>
+
+  </body>
+</html>
