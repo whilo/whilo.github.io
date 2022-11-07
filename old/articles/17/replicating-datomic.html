@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Replicating with Datomic</title>
+  <meta name="description" content="MotivationI will focus in this post on a practical application of replikativ. I will talkmore about the theoretical underpinnings and motivations in the next...">
+
+  <!-- Google Fonts loaded here depending on setting in _data/options.yml true loads font, blank does not-->
+  
+    <link href='//fonts.googleapis.com/css?family=Lato:400,400italic' rel='stylesheet' type='text/css'>
+  
+  
+  <!-- Load up MathJax script if needed ... specify in /_data/options.yml file-->
+  
+    <script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+  <link rel="stylesheet" type="text/css" href="/css/tufte.css">
+  <!-- <link rel="stylesheet" type="text/css" href="/css/print.css" media="print"> -->
+
+  <link rel="canonical" href="https://whilo.github.io/articles/17/replicating-datomic">
+
+  <link rel="alternate" type="application/rss+xml" title="(replicate thoughts)" href="https://whilo.github.io/feed.xml" />
+</head>
+
+  <body>
+    <!--- Header and nav template site-wide -->
+<header>
+    <nav class="group">
+	<a href="/"><img class="badge" src="/assets/img/badge.png" alt="badge"></a>
+	
+		
+  	
+		
+		    
+		      <a href="/">blog</a>
+		    
+	    
+  	
+		
+		    
+		      <a href="/about/">About</a>
+		    
+	    
+  	
+		
+		    
+		      <a href="/css/print.css"></a>
+		    
+	    
+  	
+		
+  	
+	</nav>
+</header>
+
+    <article class="group">
+      <h1>Replicating with Datomic</h1>
+<p class="subtitle">February 11, 2017</p>
+
+<h2 id="motivation">Motivation</h2>
+
+<p>I will focus in this post on a practical application of replikativ. I will talk
+more about the theoretical underpinnings and motivations in the next post. So in
+this concrete example we want to store tweets. The whole code is
+available <a href="https://github.com/replikativ/twitter-collector">here</a>. We do not
+know yet what we want to do with them exactly, but we want to have a
+straightforward way to access them later. This is what replikativ was built for:
+An open data management layer as a baseline for distributed applications. <label for="One" class="margin-toggle"> ⊕</label><input type="checkbox" id="One" class="margin-toggle" /><span class="marginnote">Actually local applications are a subset of distributed
+applications, so this means <em>all</em> computer programs. This generality is not
+meaningful here though. </span> <!--more--></p>
+
+<h2 id="setup">Setup</h2>
+
+<p>We need to require a bunch of namespaces:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nf">ns</span><span class="w"> </span><span class="n">twitter-collector.core</span><span class="w">
+  </span><span class="p">(</span><span class="no">:require</span><span class="w"> </span><span class="p">[</span><span class="n">gezwitscher.core</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">stream</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">clojure.core.async</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">chan</span><span class="w"> </span><span class="n">timeout</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">kabel.peer</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">start</span><span class="w"> </span><span class="n">stop</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">konserve</span><span class="w">
+             </span><span class="p">[</span><span class="n">filestore</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">new-fs-store</span><span class="w"> </span><span class="n">delete-store</span><span class="p">]]</span><span class="w">
+             </span><span class="p">[</span><span class="n">memory</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">new-mem-store</span><span class="p">]]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">konserve-leveldb.core</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">new-leveldb-store</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ</span><span class="w">
+             </span><span class="p">[</span><span class="n">peer</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">server-peer</span><span class="w"> </span><span class="n">client-peer</span><span class="p">]]</span><span class="w">
+             </span><span class="p">[</span><span class="n">stage</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">connect!</span><span class="w"> </span><span class="n">create-stage!</span><span class="p">]]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ.crdt.cdvcs.stage</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">cs</span><span class="p">]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ.stage</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">s</span><span class="p">]</span><span class="w">
+            </span><span class="p">[</span><span class="n">superv.async</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">go-try</span><span class="w"> </span><span class="n">&lt;?</span><span class="w"> </span><span class="n">&lt;??</span><span class="w"> </span><span class="n">go-loop-try</span><span class="w"> </span><span class="n">S</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">konserve.core</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">k</span><span class="p">]))</span></code></pre></figure>
+
+<p>This will probably be more unified under an API namespace at some point, but
+right now I want to expose the primitives for
+exploration. <a href="https://github.com/replikativ/gezwitscher">gezwitscher</a> is our
+twitter4j wrapper, <a href="https://github.com/replikativ/kabel">kabel</a> provides network
+IO, <a href="https://github.com/replikativ/konserve">konserve</a> storage IO
+and <a href="https://github.com/replikativ/replikativ">replikativ</a> our interface to
+CRDTs <label for="Fourty" class="margin-toggle"> ⊕</label><input type="checkbox" id="Fourty" class="margin-toggle" /><span class="marginnote">Confluent replicated datatypes, you can find out
+more about them <a href="https://syncfree.lip6.fr/index.php/crdt-resources">here</a> or in
+my next post. </span>. We also
+use <a href="https://github.com/replikativ/superv.async">superv.async</a>, a version of
+core.async with Erlang-like error-handling for more robustness and better
+stacktraces. Note also that while we use the JVM here, all these libraries also
+work with ClojureScript in the browser.</p>
+
+<p>We then define some constants describing the universal address of our datatype
+in the replikativ system.</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">user</span><span class="w"> </span><span class="s">"mail:twitter@crawler.com"</span><span class="p">)</span><span class="w"> </span><span class="c1">;; will be used to authenticate you (not yet)
+</span><span class="w">
+</span><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">cdvcs-id</span><span class="w"> </span><span class="o">#</span><span class="n">uuid</span><span class="w"> </span><span class="s">"12d49511-e733-4007-937b-460c3794fae9"</span><span class="p">)</span></code></pre></figure>
+
+<h1 id="storing-tweets">Storing tweets</h1>
+
+<p>We use a simple buffer for tweets, so we can write at our speed. This is not
+strictly necessary, but it makes the system more scalable if you do not write
+every piece of information atomically, but in batches. The twitter API can
+become very bursty at times. <label for="Two" class="margin-toggle"> ⊕</label><input type="checkbox" id="Two" class="margin-toggle" /><span class="marginnote">The metadata grows with every
+operation and is still communicated in total in a handshake on each connection.
+This can be addressed by a durable persistent datastructure like
+a <a href="https://github.com/datacrypt-project/hitchhiker-tree">Hitchhiker</a> tree,
+providing optimal deltas. For now the buffer and fixed transaction speed for
+this datatype instance will allow write capacity for at least a year, or more
+than three million write operations. </span></p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="c1">;; buffering function
+</span><span class="p">(</span><span class="k">defn</span><span class="w"> </span><span class="n">new-tweet</span><span class="w"> </span><span class="p">[</span><span class="n">pending</span><span class="w"> </span><span class="n">status</span><span class="p">]</span><span class="w">
+  </span><span class="p">(</span><span class="nf">swap!</span><span class="w"> </span><span class="n">pending</span><span class="w"> </span><span class="p">(</span><span class="k">fn</span><span class="w"> </span><span class="p">[[</span><span class="n">prev</span><span class="w"> </span><span class="n">cur</span><span class="p">]</span><span class="w"> </span><span class="n">status</span><span class="p">]</span><span class="w"> </span><span class="p">[</span><span class="n">prev</span><span class="w"> </span><span class="p">(</span><span class="nb">conj</span><span class="w"> </span><span class="n">cur</span><span class="w"> </span><span class="n">status</span><span class="p">)])</span><span class="w"> </span><span class="n">status</span><span class="p">))</span><span class="w">
+
+
+</span><span class="p">(</span><span class="k">defn</span><span class="w"> </span><span class="n">store-tweets</span><span class="w"> </span><span class="p">[</span><span class="n">stage</span><span class="w"> </span><span class="n">pending</span><span class="p">]</span><span class="w">
+  </span><span class="p">(</span><span class="nf">go-try</span><span class="w"> </span><span class="n">S</span><span class="w">
+   </span><span class="p">(</span><span class="k">let</span><span class="w"> </span><span class="p">[</span><span class="n">tweets</span><span class="w"> </span><span class="p">(</span><span class="nf">vec</span><span class="w"> </span><span class="p">(</span><span class="nb">first</span><span class="w"> </span><span class="p">(</span><span class="nf">swap!</span><span class="w"> </span><span class="n">pending</span><span class="w"> </span><span class="p">(</span><span class="k">fn</span><span class="w"> </span><span class="p">[[</span><span class="n">prev</span><span class="w"> </span><span class="n">cur</span><span class="p">]]</span><span class="w"> </span><span class="p">[</span><span class="n">cur</span><span class="w"> </span><span class="o">'</span><span class="p">()]))))</span><span class="w">
+         </span><span class="n">tweet-txs</span><span class="w"> </span><span class="p">(</span><span class="nf">mapv</span><span class="w"> </span><span class="p">(</span><span class="k">fn</span><span class="w"> </span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="w"> </span><span class="p">[</span><span class="ss">'add-tweet</span><span class="w"> </span><span class="n">t</span><span class="p">])</span><span class="w"> </span><span class="n">tweets</span><span class="p">)]</span><span class="w">
+     </span><span class="p">(</span><span class="nb">when-not</span><span class="w"> </span><span class="p">(</span><span class="nf">empty?</span><span class="w"> </span><span class="n">tweets</span><span class="p">)</span><span class="w">
+       </span><span class="p">(</span><span class="nf">&lt;?</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">cs/transact!</span><span class="w"> </span><span class="n">stage</span><span class="w"> </span><span class="p">[</span><span class="n">user</span><span class="w"> </span><span class="n">cdvcs-id</span><span class="p">]</span><span class="w"> </span><span class="n">tweet-txs</span><span class="p">))))))</span></code></pre></figure>
+
+<p>The <code class="highlighter-rouge">store-tweets</code> function takes the tweets out of the buffer, transforms them
+into a very simple form of bytecode, describing the function to call with the
+symbol <code class="highlighter-rouge">add-tweet</code>. You are free to put any Clojure datastructure there you
+like, importantly you can use the function’s source code to communicate
+unambigously for which function each transaction was meant. But for now you can
+ignore it and just use a symbol. The crucial call is to <code class="highlighter-rouge">cs/transact</code> which will
+feed the tweets into the specified datatype address.</p>
+
+<p>Let’s fire up replikativ now:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">store-path</span><span class="w"> </span><span class="s">"/tmp/twitter-store"</span><span class="p">)</span><span class="w">
+
+</span><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">store</span><span class="w"> </span><span class="p">(</span><span class="nf">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">new-leveldb-store</span><span class="w"> </span><span class="n">store-path</span><span class="p">)))</span><span class="w">
+
+</span><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">peer</span><span class="w"> </span><span class="p">(</span><span class="nf">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">server-peer</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="n">store</span><span class="w"> </span><span class="s">"ws://127.0.0.1:9095"</span><span class="p">)))</span><span class="w">
+
+</span><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">pending</span><span class="w"> </span><span class="p">(</span><span class="nf">atom</span><span class="w"> </span><span class="p">[</span><span class="o">'</span><span class="p">()</span><span class="w"> </span><span class="o">'</span><span class="p">()]))</span><span class="w">
+
+</span><span class="p">(</span><span class="nf">start</span><span class="w"> </span><span class="n">peer</span><span class="p">)</span></code></pre></figure>
+
+<p>So we have created a store <label for="Three" class="margin-toggle"> ⊕</label><input type="checkbox" id="Three" class="margin-toggle" /><span class="marginnote">With LevelDB as the backend. </span> and a peer, reachable on localhost <label for="Four" class="margin-toggle"> ⊕</label><input type="checkbox" id="Four" class="margin-toggle" /><span class="marginnote">Using plain
+websockets (no SSL). </span></p>
+
+<p>We now set up the interface to replikativ, which we call a stage <label for="Five" class="margin-toggle"> ⊕</label><input type="checkbox" id="Five" class="margin-toggle" /><span class="marginnote">This is an abuse of the git terminology, because we initially staged
+changes first before committing them there. If you have better proposals, let me
+know :). </span>:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">stage</span><span class="w"> </span><span class="p">(</span><span class="nf">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">create-stage!</span><span class="w"> </span><span class="n">user</span><span class="w"> </span><span class="n">peer</span><span class="p">)))</span><span class="w">
+
+</span><span class="p">(</span><span class="nf">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">cs/create-cdvcs!</span><span class="w"> </span><span class="n">stage</span><span class="w"> </span><span class="no">:id</span><span class="w"> </span><span class="n">cdvcs-id</span><span class="p">))</span></code></pre></figure>
+
+<p>We have also created the datatype now, which includes global subscription.</p>
+
+<p>We create a loop to flush the buffer every ten seconds:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nf">go-loop-try</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">[]</span><span class="w">
+                 </span><span class="p">(</span><span class="nf">&lt;?</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">store-tweets</span><span class="w"> </span><span class="n">stage</span><span class="w"> </span><span class="n">pending</span><span class="p">))</span><span class="w">
+                 </span><span class="p">(</span><span class="nf">&lt;?</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">timeout</span><span class="w"> </span><span class="p">(</span><span class="nb">*</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="mi">1000</span><span class="p">)))</span><span class="w">
+                 </span><span class="p">(</span><span class="nf">recur</span><span class="p">))</span></code></pre></figure>
+
+<p>Finally we hook into twitter:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">twitter-stream</span><span class="w">
+        </span><span class="p">(</span><span class="nf">stream</span><span class="w">
+         </span><span class="p">(</span><span class="nf">read-string</span><span class="w"> </span><span class="p">(</span><span class="nb">slurp</span><span class="w"> </span><span class="s">"credentials.edn"</span><span class="p">))</span><span class="w">
+         </span><span class="p">[]</span><span class="w">
+         </span><span class="p">(</span><span class="nf">vec</span><span class="w"> </span><span class="n">topics</span><span class="p">)</span><span class="w">
+         </span><span class="p">(</span><span class="nb">partial</span><span class="w"> </span><span class="n">new-tweet</span><span class="w"> </span><span class="n">pending</span><span class="p">)</span><span class="w">
+         </span><span class="p">(</span><span class="k">fn</span><span class="w"> </span><span class="p">[</span><span class="n">e</span><span class="p">]</span><span class="w">
+           </span><span class="p">(</span><span class="nb">println</span><span class="w"> </span><span class="s">"Restarting stream due to:"</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w">
+           </span><span class="p">(</span><span class="nf">twitter-stream</span><span class="p">)</span><span class="w">
+           </span><span class="p">(</span><span class="nb">println</span><span class="w"> </span><span class="s">"Waiting 15 minutes for rate limit."</span><span class="p">)</span><span class="w">
+           </span><span class="p">(</span><span class="nf">go-try</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">&lt;?</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">timeout</span><span class="w"> </span><span class="p">(</span><span class="nb">*</span><span class="w"> </span><span class="mi">15</span><span class="w"> </span><span class="mi">60</span><span class="w"> </span><span class="mi">1000</span><span class="p">)))</span><span class="w">
+                   </span><span class="p">(</span><span class="nf">start-filter-stream</span><span class="p">)))))</span></code></pre></figure>
+
+<p>Now we store our data. Perfect, wait, what do we do with it? I assume we were
+interested in some tweets beforehand, but so far we just cheaply store data. The
+nice thing about using replikativ is that data collection and data evaluation
+are decoupled. <label for="Six" class="margin-toggle"> ⊕</label><input type="checkbox" id="Six" class="margin-toggle" /><span class="marginnote">This is the point of replikativ really, as I
+will clearify in the next blog post. </span></p>
+
+<p>We can see from the log output that things are happening, but how do we access
+the data?</p>
+
+<h1 id="accessing-the-tweets">Accessing the tweets</h1>
+
+<p>The following code does in no way access the collector written above. So you
+can run it on another machine. I use it to analyze tweets on my laptop from
+time to time, for example.</p>
+
+<p>So let’s setup a replikativ peer on a machine you want to do analysis on:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nf">ns</span><span class="w"> </span><span class="n">twitter-collector.client</span><span class="w">
+  </span><span class="p">(</span><span class="no">:require</span><span class="w"> </span><span class="p">[</span><span class="n">twitter-collector.core</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">user</span><span class="w"> </span><span class="n">cdvcs-id</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ.crdt.cdvcs.realize</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">r</span><span class="p">]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ.peer</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">client-peer</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ.p2p.fetch</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">fetch</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ.stage</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">create-stage!</span><span class="w"> </span><span class="n">connect!</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ.crdt.cdvcs.stage</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">cs</span><span class="p">]</span><span class="w">
+            </span><span class="p">[</span><span class="n">konserve.filestore</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">new-fs-store</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">clojure.core.async</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">async</span><span class="p">]</span><span class="w">
+            </span><span class="p">[</span><span class="n">superv.async</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="p">[</span><span class="n">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="p">]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ.stage</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">s</span><span class="p">]</span><span class="w">
+            </span><span class="p">[</span><span class="n">konserve.core</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">k</span><span class="p">]</span><span class="w">
+            </span><span class="p">[</span><span class="n">replikativ.crdt.cdvcs.stage</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">cs</span><span class="p">]</span><span class="w">
+            </span><span class="p">[</span><span class="n">datomic.api</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">d</span><span class="p">]))</span></code></pre></figure>
+
+<p>Note that we use the realization for CDVCS, which supplies us with streaming.</p>
+
+<p>First we do the same setup as above, but for the client, and connect to the
+server (e.g. localhost):</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">client-store</span><span class="w"> </span><span class="p">(</span><span class="nf">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">new-fs-store</span><span class="w"> </span><span class="s">"/home/christian/twitter"</span><span class="p">)))</span><span class="w">
+
+</span><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="p">(</span><span class="nf">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">client-peer</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="n">client-store</span><span class="p">)))</span><span class="w">
+
+</span><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">client-stage</span><span class="w"> </span><span class="p">(</span><span class="nf">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">create-stage!</span><span class="w"> </span><span class="n">user</span><span class="w"> </span><span class="n">client</span><span class="p">)))</span><span class="w">
+
+</span><span class="p">(</span><span class="nf">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">cs/create-cdvcs!</span><span class="w"> </span><span class="n">client-stage</span><span class="w"> </span><span class="no">:id</span><span class="w"> </span><span class="n">cdvcs-id</span><span class="p">))</span><span class="w">
+
+</span><span class="p">(</span><span class="nf">&lt;??</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="p">(</span><span class="nf">connect!</span><span class="w"> </span><span class="n">client-stage</span><span class="w"> </span><span class="s">"ws://localhost:9095"</span><span class="p">))</span></code></pre></figure>
+
+<p>Finally we extract all tweet texts into an atom:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">tweets</span><span class="w"> </span><span class="p">(</span><span class="nf">atom</span><span class="w"> </span><span class="p">[]))</span><span class="w">
+
+</span><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">atom-stream</span><span class="w"> </span><span class="p">(</span><span class="nf">r/stream-into-identity!</span><span class="w"> </span><span class="n">client-stage</span><span class="w"> </span><span class="p">[</span><span class="n">user</span><span class="w"> </span><span class="n">cdvcs-id</span><span class="p">]</span><span class="w">
+                                          </span><span class="p">{</span><span class="ss">'add-tweet</span><span class="w"> </span><span class="p">(</span><span class="k">fn</span><span class="w"> </span><span class="p">[</span><span class="n">old</span><span class="w"> </span><span class="n">t</span><span class="p">]</span><span class="w">
+                                                        </span><span class="p">(</span><span class="nf">swap!</span><span class="w"> </span><span class="n">old</span><span class="w"> </span><span class="nb">into</span><span class="w"> </span><span class="p">[(</span><span class="no">:text</span><span class="w"> </span><span class="n">t</span><span class="p">)])</span><span class="w">
+                                                        </span><span class="n">old</span><span class="p">)}</span><span class="w">
+                                          </span><span class="n">tweets</span><span class="p">))</span></code></pre></figure>
+
+<p>The crucial part here is <code class="highlighter-rouge">stream-into-identity</code> which does what you expect it to
+do. It realizes the transactions with help of the supplied map. <label for="Seven" class="margin-toggle"> ⊕</label><input type="checkbox" id="Seven" class="margin-toggle" /><span class="marginnote">Again, think of them as bytecode, if you like. </span> Feel free to peek at
+the tweet atom, or do a regex on it:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nf">take-last</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="err">@</span><span class="n">tweets</span><span class="p">)</span><span class="w">
+
+</span><span class="p">(</span><span class="nb">count</span><span class="w"> </span><span class="p">(</span><span class="nb">filter</span><span class="w"> </span><span class="p">(</span><span class="k">fn</span><span class="w"> </span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="w"> </span><span class="p">(</span><span class="nb">re-find</span><span class="w"> </span><span class="o">#</span><span class="s">"ethereum"</span><span class="w"> </span><span class="n">s</span><span class="p">))</span><span class="w"> </span><span class="err">@</span><span class="n">tweets</span><span class="p">))</span></code></pre></figure>
+
+<p>Note that we decide upon the semantics of the realization process at the point
+where we stream into some identity. You can take the same raw tweet data and
+stream it into a file or, finally, in Datomic. If we would have streamed it into
+Datomic directly, we would have thrown away a lot of data, which we might be
+interested in later. If not, then you need to have some other storage system,
+too.</p>
+
+<h2 id="streaming-into-datomic">Streaming into Datomic</h2>
+
+<p>Assuming you have a Datomic instance set up, you can leverage its powerful query
+capabilities to build applications as usual:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">db-uri</span><span class="w"> </span><span class="s">"datomic:free://localhost:4334/tweets"</span><span class="p">)</span><span class="w">
+
+</span><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="p">(</span><span class="nf">d/connect</span><span class="w"> </span><span class="n">db-uri</span><span class="p">))</span><span class="w">
+
+</span><span class="p">(</span><span class="k">defn</span><span class="w"> </span><span class="n">tweet-tx</span><span class="w"> </span><span class="p">[{</span><span class="no">:keys</span><span class="w"> </span><span class="p">[</span><span class="n">id</span><span class="w"> </span><span class="n">text</span><span class="w"> </span><span class="n">timestamp_ms</span><span class="w"> </span><span class="n">user</span><span class="w">
+                        </span><span class="n">retweet_count</span><span class="w"> </span><span class="n">favorite_count</span><span class="p">]</span><span class="w"> </span><span class="no">:as</span><span class="w"> </span><span class="n">tw</span><span class="p">}]</span><span class="w">
+  </span><span class="p">{</span><span class="no">:db/id</span><span class="w"> </span><span class="p">(</span><span class="nf">d/tempid</span><span class="w"> </span><span class="no">:db.part/user</span><span class="p">)</span><span class="w">
+   </span><span class="no">:tweet/id</span><span class="w"> </span><span class="n">id</span><span class="w">
+   </span><span class="no">:tweet/text</span><span class="w"> </span><span class="n">text</span><span class="w">
+   </span><span class="no">:tweet/ts</span><span class="w"> </span><span class="p">(</span><span class="nf">java.util.Date.</span><span class="w"> </span><span class="p">(</span><span class="nf">Long/parseLong</span><span class="w"> </span><span class="n">timestamp_ms</span><span class="p">))</span><span class="w">
+   </span><span class="no">:tweet/screenname</span><span class="w"> </span><span class="p">(</span><span class="no">:screen_name</span><span class="w"> </span><span class="n">user</span><span class="p">)</span><span class="w">
+   </span><span class="no">:tweet/favourite-count</span><span class="w"> </span><span class="n">favorite_count</span><span class="w">
+   </span><span class="no">:tweet/retweet-count</span><span class="w"> </span><span class="n">retweet_count</span><span class="p">})</span><span class="w">
+   
+</span><span class="p">(</span><span class="k">def</span><span class="w"> </span><span class="n">datomic-stream</span><span class="w"> </span><span class="p">(</span><span class="nf">r/stream-into-identity!</span><span class="w"> </span><span class="n">client-stage</span><span class="w">
+                                             </span><span class="p">[</span><span class="n">user</span><span class="w"> </span><span class="n">cdvcs-id</span><span class="p">]</span><span class="w">
+                                             </span><span class="p">{</span><span class="ss">'add-tweet</span><span class="w"> </span><span class="p">(</span><span class="k">fn</span><span class="w"> </span><span class="p">[</span><span class="n">conn</span><span class="w"> </span><span class="n">twt</span><span class="p">]</span><span class="w">
+                                                           </span><span class="err">@</span><span class="p">(</span><span class="nf">d/transact</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="p">[(</span><span class="nf">tweet-tx</span><span class="w"> </span><span class="n">twt</span><span class="p">)])</span><span class="w">
+                                                           </span><span class="n">conn</span><span class="p">)}</span><span class="w">
+                                             </span><span class="n">conn</span><span class="w">
+                                             </span><span class="no">:applied-log</span><span class="w"> </span><span class="no">:datomic-analysis</span><span class="w">
+                                             </span><span class="p">))</span><span class="w"> </span></code></pre></figure>
+
+<p>So again we stream the datatype, but we use a different evaluation map. We map
+all tweets into Datomic fitting its schema and then transact them. Note that we
+supply an <code class="highlighter-rouge">:applied-log</code> key which makes the stream persistent. It will remember
+applied operations on restarts and provides exactly once semantics for
+<code class="highlighter-rouge">d/transact</code>. <label for="Eight" class="margin-toggle"> ⊕</label><input type="checkbox" id="Eight" class="margin-toggle" /><span class="marginnote">The schema is provided in the project. </span></p>
+
+<p>Let’s have some fun:</p>
+
+<figure class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nf">d/q</span><span class="w"> </span><span class="o">'</span><span class="p">[</span><span class="no">:find</span><span class="w"> </span><span class="p">(</span><span class="nb">count</span><span class="w"> </span><span class="n">?t</span><span class="p">)</span><span class="w">
+       </span><span class="no">:where</span><span class="w">
+       </span><span class="p">[</span><span class="n">?tw</span><span class="w"> </span><span class="no">:tweet/text</span><span class="w"> </span><span class="n">?t</span><span class="p">]]</span><span class="w">
+     </span><span class="p">(</span><span class="nf">d/db</span><span class="w"> </span><span class="n">conn</span><span class="p">))</span><span class="w">
+       
+</span><span class="p">(</span><span class="nf">-&gt;&gt;</span><span class="w"> </span><span class="p">(</span><span class="nf">d/q</span><span class="w"> </span><span class="o">'</span><span class="p">[</span><span class="no">:find</span><span class="w"> </span><span class="n">?txt</span><span class="w">
+            </span><span class="no">:in</span><span class="w"> </span><span class="n">$</span><span class="w">
+            </span><span class="no">:where</span><span class="w">
+            </span><span class="p">[(</span><span class="nf">fulltext</span><span class="w"> </span><span class="n">$</span><span class="w"> </span><span class="no">:tweet/text</span><span class="w"> </span><span class="s">"ethereum"</span><span class="p">)</span><span class="w">
+             </span><span class="p">[[</span><span class="n">?entity</span><span class="w"> </span><span class="n">?name</span><span class="w"> </span><span class="n">?tx</span><span class="w"> </span><span class="n">?score</span><span class="p">]]]</span><span class="w">
+            </span><span class="p">[</span><span class="n">?entity</span><span class="w"> </span><span class="no">:tweet/text</span><span class="w"> </span><span class="n">?txt</span><span class="p">]]</span><span class="w">
+         </span><span class="p">(</span><span class="nf">d/db</span><span class="w"> </span><span class="n">conn</span><span class="p">))</span><span class="w">
+    </span><span class="p">(</span><span class="nb">take</span><span class="w"> </span><span class="mi">10</span><span class="p">))</span><span class="w">
+    
+</span><span class="p">(</span><span class="nf">require</span><span class="w"> </span><span class="o">'</span><span class="p">[</span><span class="n">incanter.core</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="no">:all</span><span class="p">]</span><span class="w">
+         </span><span class="o">'</span><span class="p">[</span><span class="n">incanter.charts</span><span class="w"> </span><span class="no">:refer</span><span class="w"> </span><span class="no">:all</span><span class="p">])</span><span class="w">
+
+ </span><span class="c1">;; most active accounts        
+</span><span class="p">(</span><span class="k">let</span><span class="w"> </span><span class="p">[</span><span class="n">res</span><span class="w"> </span><span class="p">(</span><span class="nf">-&gt;&gt;</span><span class="w"> </span><span class="p">(</span><span class="nf">d/q</span><span class="w"> </span><span class="o">'</span><span class="p">[</span><span class="no">:find</span><span class="w"> </span><span class="n">?u</span><span class="w"> </span><span class="p">(</span><span class="nb">count</span><span class="w"> </span><span class="n">?t</span><span class="p">)</span><span class="w">
+                       </span><span class="no">:where</span><span class="w">
+                       </span><span class="p">[</span><span class="n">?t</span><span class="w"> </span><span class="no">:tweet/screenname</span><span class="w"> </span><span class="n">?u</span><span class="p">]]</span><span class="w">
+                      </span><span class="p">(</span><span class="nf">d/db</span><span class="w"> </span><span class="n">conn</span><span class="p">))</span><span class="w">
+                 </span><span class="p">(</span><span class="nb">sort-by</span><span class="w"> </span><span class="nb">second</span><span class="p">)</span><span class="w">
+                 </span><span class="nb">reverse</span><span class="w">
+                 </span><span class="p">(</span><span class="nb">take</span><span class="w"> </span><span class="mi">5</span><span class="p">))</span><span class="w">
+        </span><span class="n">screenname</span><span class="w"> </span><span class="p">(</span><span class="nb">map</span><span class="w"> </span><span class="nb">first</span><span class="w"> </span><span class="n">res</span><span class="p">)</span><span class="w">
+        </span><span class="n">tweet-count</span><span class="w"> </span><span class="p">(</span><span class="nb">map</span><span class="w"> </span><span class="nb">second</span><span class="w"> </span><span class="n">res</span><span class="p">)]</span><span class="w">
+    </span><span class="p">(</span><span class="nf">view</span><span class="w"> </span><span class="p">(</span><span class="nf">bar-chart</span><span class="w"> </span><span class="n">screenname</span><span class="w"> </span><span class="n">tweet-count</span><span class="p">)))</span></code></pre></figure>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>So we have used replikativ to decouple the write operations in an eventual
+consistent fashion from our query logic, which allows us to build a distributed
+architecture. You can also write directly on the same peer through replikativ
+into Datomic strongly consistently until Datomic has transacted. replikativ will
+then provide you with a simple means to replicate the streamed data elsewhere.</p>
+
+<p>In this example we use CDVCS, which behaves like git if you write to it on
+multiple replicas: You have to resolve conflicts before writing more data. Other
+datatypes like replikativ’s OR-Map provide conflict-free semantics, but do not
+guarantee the order in which operations are applied. I think this is more
+appropriate for this particular use case, but CDVCS allows you to safely
+serialize all write operations in the same strongly consistent way as Datomic
+expects.</p>
+
+<p>You have to write some glue code, but note what we haven’t done. We have not
+opened any connections for our datatype <label for="Ten" class="margin-toggle"> ⊕</label><input type="checkbox" id="Ten" class="margin-toggle" /><span class="marginnote">The peers easily
+could actually automatically connect in a P2P fashion, but this is not
+implemented yet. </span>. You also do not have to care about storage IO, because
+replikativ manages all your data and distributes it openly as needed with
+different storage backends including the filesystem. replikativ is not a
+database in the sense of powerful queries though. For this its streaming
+functionality leverages all the tools you already know and love. It is there to
+decouple distributed data management for you. Or to just store some raw data for
+later retrieval. If you have any problems with the examples, feel free to join
+our <a href="https://gitter.im/replikativ/replikativ">chat</a> and complain :).</p>
+
+
+
+
+    </article>
+    <span class="print-footer">Replicating with Datomic - February 11, 2017 - christian weilbach</span>
+    <footer>
+  <hr class="slender">
+  <ul class="footer-links">
+    <!-- <li><a href="mailto:hate@spam.net"><span class="icon-mail"></span></a></li>     -->
+    
+      <li>
+        <a href="mailto:christian@topiq.es"><span class="icon-mail"></span></a>
+      </li>
+    
+      <li>
+        <a href="//www.twitter.com/wh1lo"><span class="icon-twitter"></span></a>
+      </li>
+    
+      <li>
+        <a href="//github.com/whilo"><span class="icon-github"></span></a>
+      </li>
+    
+      <li>
+        <a href="/feed.xml"><span class="icon-feed"></span></a>
+      </li>
+      
+  </ul>
+<div class="credits">
+<span>&copy; 2017 &nbsp;&nbsp;CHRISTIAN WEILBACH</span></br> <br>
+<span>This site created with the <a href="//github.com/clayh53/tufte-jekyll">Tufte theme for (replicate thoughts) </a> in <a href="//jekyllrb.com">Jekyll</a>.</span> 
+</div>  
+</footer>
+
+  </body>
+</html>
