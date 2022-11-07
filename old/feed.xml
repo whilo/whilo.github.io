@@ -3,8 +3,8 @@
   <channel>
     <title>(replicate thoughts)</title>
     <description>A blog about distributed systems, machine learning and critical theory.</description>
-    <link>https://whilo.github.io/</link>
-    <atom:link href="https://whilo.github.io/feed.xml" rel="self" type="application/rss+xml"/>
+    <link>https://whilo.github.io/old/</link>
+    <atom:link href="https://whilo.github.io/old/feed.xml" rel="self" type="application/rss+xml"/>
     <pubDate>Wed, 22 Feb 2017 00:01:37 +0100</pubDate>
     <lastBuildDate>Wed, 22 Feb 2017 00:01:37 +0100</lastBuildDate>
     <generator>Jekyll v3.1.6</generator>
@@ -311,8 +311,8 @@ our &lt;a href=&quot;https://gitter.im/replikativ/replikativ&quot;&gt;chat&lt;/a
 
 </description>
         <pubDate>Sat, 11 Feb 2017 01:05:21 +0100</pubDate>
-        <link>https://whilo.github.io/articles/17/replicating-datomic</link>
-        <guid isPermaLink="true">https://whilo.github.io/articles/17/replicating-datomic</guid>
+	<link>https://whilo.github.io/old/articles/17/replicating-datomic</link>
+	<guid isPermaLink="true">https://whilo.github.io/old/articles/17/replicating-datomic</guid>
         
         
         <category>clojure</category>
@@ -429,7 +429,7 @@ advanced storage features on top is intended, for instance a fast append-log
 with reduction is already implemented and used in replikativ. &lt;label for=&quot;One&quot; class=&quot;margin-toggle sidenote-number&quot;&gt;&lt;/label&gt;&lt;input type=&quot;checkbox&quot; id=&quot;One&quot; class=&quot;margin-toggle&quot; /&gt;&lt;span class=&quot;sidenote&quot;&gt;A write-through caching scheme could also become attractive as well as a small
 REST interface exposing konserve operations. &lt;/span&gt;&lt;/p&gt;
 
-&lt;p&gt;Dealing with errors in core.async &lt;a href=&quot;https://whilo.github.io/articles/16/error-handling1&quot;&gt;is not always easy&lt;/a&gt;, so it can be helpful to
+		&lt;p&gt;Dealing with errors in core.async &lt;a href=&quot;https://whilo.github.io/old/articles/16/error-handling1&quot;&gt;is not always easy&lt;/a&gt;, so it can be helpful to
 use &lt;a href=&quot;https://github.com/replikativ/superv.async&quot;&gt;superv.async&lt;/a&gt; instead of plain
 core.async. Errors happening are returned as wrapped exceptions and need to be
 rethrown in case you expect this. I hope you find it a useful storage default
@@ -439,8 +439,8 @@ the
 on the Clojure mailing list. Happy storing! :)&lt;/p&gt;
 </description>
         <pubDate>Sat, 12 Nov 2016 01:05:21 +0100</pubDate>
-        <link>https://whilo.github.io/articles/16/unified-storage-io</link>
-        <guid isPermaLink="true">https://whilo.github.io/articles/16/unified-storage-io</guid>
+	<link>https://whilo.github.io/old/articles/16/unified-storage-io</link>
+	<guid isPermaLink="true">https://whilo.github.io/old/articles/16/unified-storage-io</guid>
         
         
         <category>clojure</category>
@@ -626,8 +626,8 @@ the
 on the Clojure mailing list :).&lt;/p&gt;
 </description>
         <pubDate>Thu, 10 Mar 2016 23:01:19 +0100</pubDate>
-        <link>https://whilo.github.io/articles/16/error-handling1</link>
-        <guid isPermaLink="true">https://whilo.github.io/articles/16/error-handling1</guid>
+	<link>https://whilo.github.io/old/articles/16/error-handling1</link>
+	<guid isPermaLink="true">https://whilo.github.io/old/articles/16/error-handling1</guid>
         
         
         <category>erlang</category>
@@ -646,8 +646,8 @@ on the Clojure mailing list :).&lt;/p&gt;
 
 </description>
         <pubDate>Thu, 10 Mar 2016 23:01:19 +0100</pubDate>
-        <link>https://whilo.github.io/articles/16/introduction</link>
-        <guid isPermaLink="true">https://whilo.github.io/articles/16/introduction</guid>
+	<link>https://whilo.github.io/old/articles/16/introduction</link>
+	<guid isPermaLink="true">https://whilo.github.io/old/articles/16/introduction</guid>
         
         
         <category>org</category>
